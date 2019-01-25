@@ -1,0 +1,79 @@
+#!/usr/bin/env bash
+
+set -e
+source .env
+
+BUILD_DIR="build/"
+
+DOCKERFILE="${BUILD_DIR}/Dockerfile"
+COMPOSE_BASE="${BUILD_DIR}docker-compose.yml"
+COMPOSE_LOCAL="${BUILD_DIR}docker-compose.local.yml"
+COMPOSE_PROD="${BUILD_DIR}docker-compose.prod.yml"
+
+COMPOSE="docker-compose -f ${COMPOSE_BASE} -f ${COMPOSE_LOCAL}"
+
+if [ $# -gt 0 ]; then
+
+  if [ "$1" == "up" ]; then
+    ${COMPOSE} up --build --detach app
+
+  elif [ "$1" == "scheduler" ]; then
+    ${COMPOSE} up --build scheduler
+
+  elif [ "$1" == "down" ]; then
+    ${COMPOSE} down
+
+  elif [ "$1" == "tail" ]; then
+    ${COMPOSE} logs --follow
+
+  elif [ "$1" == "restart" ]; then
+    ./$0 down
+    ./$0 up
+
+  elif [ "$1" == "push" ]; then
+    docker push ${DOCKER_REPOSITORY}
+
+  elif [ "$1" == "build" ]; then
+    docker build --file ${DOCKERFILE} --target production --tag ${DOCKER_REPOSITORY} .
+
+  elif [ "$1" == "deploy" ]; then
+    read -p "Are you sure you want to deploy [${DOCKER_REPOSITORY}] to [${DEPLOY_SERVER}]? (y/N) " -r
+    echo
+    if [[ $REPLY =~ ^[Yy]$ ]]; then
+      echo -n "Uploading deployment configuration..."
+      ssh ${DEPLOY_SERVER} "mkdir -p ${APP_ID}"
+      scp -r $0 ${BUILD_DIR} ${DEPLOY_SERVER}:~/${APP_ID} > /dev/null && echo "OK"
+      ssh ${DEPLOY_SERVER} "cd ${APP_ID}; docker-compose -f ${COMPOSE_BASE} -f ${COMPOSE_PROD} config 2>/dev/null | docker stack deploy --with-registry-auth --prune --compose-file - ${APP_ID}"
+    fi
+
+  elif [ "$1" == "deploy-migrations" ]; then
+    read -p "Are you sure you want to run database migrations on [${DEPLOY_SERVER}]? (y/N) " -r
+    echo
+    if [[ $REPLY =~ ^[Yy]$ ]]; then
+      ssh ${DEPLOY_SERVER} "docker run --rm --net ${APP_ID}_network --env DB_HOST=db --env DB_PORT=3306 --env-file ${APP_ID}/.env ${DOCKER_REPOSITORY} php artisan migrate --force"
+    fi
+
+  elif [ "$1" == "clean" ]; then
+    docker system prune
+
+  elif [ "$1" == "exec" ]; then
+    shift 1
+    ARGS="$@"
+    ${COMPOSE} exec app bash -c "$ARGS"
+
+  elif [ "$1" == "test" ]; then
+    shift 1
+    ARGS="$@"
+    ${COMPOSE} exec app bash -c "vendor/bin/phpunit $ARGS"
+
+  elif [ "$1" == "artisan" ]; then
+    shift 1
+    ARGS="$@"
+    ${COMPOSE} exec app bash -c "php artisan $ARGS"
+
+  else
+      ${COMPOSE} "$@"
+  fi
+else
+  ${COMPOSE} ps
+fi

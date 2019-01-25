@@ -1,0 +1,14 @@
+# Laravel
+src/bootstrap/cache/*
+src/storage/app/*
+src/storage/framework/cache/*
+src/storage/framework/sessions/*
+src/storage/framework/testing/*
+src/storage/framework/views/*
+src/storage/logs/*
+
+# etc.
+**/.env
+**/.git
+**/*node_modules
+**/.DS_Store

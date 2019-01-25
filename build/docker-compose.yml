@@ -1,0 +1,55 @@
+version: '3.7'
+
+# Volumes
+volumes:
+  mysql:
+    driver: local
+  redis:
+    driver: local
+
+services:
+  # Apache + PHP
+  app:
+    environment:
+      - CONTAINER_ROLE=app
+      - DB_HOST=db
+      - DB_PORT=3306
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+    env_file: ../.env
+    ports:
+      - "80:80"
+
+  # Scheduler
+  scheduler:
+    user: www-data
+    environment:
+      - CONTAINER_ROLE=scheduler
+      - DB_HOST=db
+      - DB_PORT=3306
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+    env_file: ../.env
+
+  # MySQL
+  db:
+    image: mysql:5.7
+    command: ["--character-set-server=utf8mb4", "--collation-server=utf8mb4_unicode_ci"]
+    environment:
+      - MYSQL_RANDOM_ROOT_PASSWORD=yes
+      - MYSQL_DATABASE=${DB_DATABASE}
+      - MYSQL_USER=${DB_USERNAME}
+      - MYSQL_PASSWORD=${DB_PASSWORD}
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql:/var/lib/mysql/
+
+  # Redis
+  redis:
+    image: redis:5.0
+    command: ["redis-server", "--appendonly", "yes", "--requirepass", "${REDIS_PASSWORD}"]
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis:/data

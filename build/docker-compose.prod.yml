@@ -1,0 +1,62 @@
+version: '3.7'
+
+# Docker Network
+networks:
+  network:
+    driver: overlay
+    attachable: true
+
+services:
+  # Apache + PHP
+  app:
+    image: ${DOCKER_REPOSITORY}
+    volumes:
+      - /var/www/html/storage
+    networks:
+      - network
+    deploy:
+      mode: global
+      placement:
+        constraints:
+          - node.labels.tag == web
+      restart_policy:
+        condition: on-failure
+
+  # Scheduler
+  scheduler:
+    image: ${DOCKER_REPOSITORY}
+    volumes:
+      - /var/www/html/storage
+    networks:
+      - network
+    deploy:
+      replicas: 1
+      placement:
+        constraints:
+          - node.labels.tag == web
+      restart_policy:
+        condition: on-failure
+
+  # MySQL
+  db:
+    networks:
+      - network
+    deploy:
+      replicas: 1
+      placement:
+        constraints:
+          - node.labels.tag == db
+      restart_policy:
+        condition: on-failure
+
+  # Redis
+  redis:
+    networks:
+      - network
+    deploy:
+      replicas: 1
+      placement:
+        constraints:
+          - node.labels.tag == cache
+      restart_policy:
+        condition: on-failure

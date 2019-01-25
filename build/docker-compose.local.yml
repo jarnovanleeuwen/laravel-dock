@@ -1,0 +1,42 @@
+version: '3.7'
+
+# Docker Network
+networks:
+  network:
+    driver: bridge
+
+services:
+  # Apache + PHP
+  app:
+    build:
+      context: ../
+      dockerfile: build/Dockerfile
+      target: app
+    image: app-local
+    depends_on:
+      - db
+      - redis
+    volumes:
+      - ../src:/var/www/html:delegated
+    networks:
+      - network
+
+  # Scheduler
+  scheduler:
+    image: app-local
+    depends_on:
+      - app
+    volumes:
+      - ../src:/var/www/html:delegated
+    networks:
+      - network
+
+  # MySQL
+  db:
+    networks:
+      - network
+
+  # Redis
+  redis:
+    networks:
+      - network
