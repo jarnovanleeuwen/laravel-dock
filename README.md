@@ -8,6 +8,7 @@ Learning the concepts of [Docker](https://www.docker.com/), I created an example
 - A convenient binary providing `up`, `artisan`, `build`, `push`, and even `deploy` commands.
 - Deployments to a multi-server cloud environment using **Docker Swarm**.
 - Built-in support for Laravel's key concepts: **scheduling, queues, cache etc.**
+- All configuration in source control (e.g. virtual hosts, OPcache, InnoDB parameters).
 
 # Installation
 
