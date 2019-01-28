@@ -13,7 +13,7 @@ RUN useradd --create-home webdev
 WORKDIR /var/www/html
 
 # Install dependencies
-RUN apt-get update && apt-get install -y mysql-client zip
+RUN apt-get update && apt-get install -y mysql-client nano supervisor zip
 
 # Install extensions
 RUN docker-php-ext-install opcache pcntl pdo_mysql
@@ -29,6 +29,10 @@ COPY ./config/php/local.ini $PHP_INI_DIR/conf.d/local.ini
 
 # Overwrite the default Apache vhost with the custom vhost
 COPY ./config/apache/vhost.conf /etc/apache2/sites-available/000-default.conf
+
+# Add Supervisor config for Laravel Horizon
+RUN rm -rf /var/log/supervisor ; mkdir -m 777 /var/log/supervisor
+COPY ./config/supervisor/ /etc/supervisor/
 
 # Install Composer
 COPY --from=composer /usr/bin/composer /usr/bin/composer

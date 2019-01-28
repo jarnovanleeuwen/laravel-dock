@@ -29,6 +29,7 @@ The stack can be managed through the `dock <command>` command-line executable. I
 |---------|-------------|
 | `up` | Start the local stack (webserver, database) for development. |
 | `scheduler` | Start Laravel's scheduler daemon. |
+| `queue` | Start Laravel Horizon (queue workers). |
 | `down` | Stop the local stack. |
 | `tail` | Tail and follow Docker logs from all running containers. |
 | `restart` | Restart the local stack. |

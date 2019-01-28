@@ -31,6 +31,16 @@ services:
     networks:
       - network
 
+  # Queue worker
+  queue:
+    image: app-local
+    depends_on:
+      - app
+    volumes:
+      - ../src:/var/www/html:delegated
+    networks:
+      - network
+
   # MySQL
   db:
     networks:
