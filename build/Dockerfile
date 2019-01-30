@@ -38,7 +38,7 @@ COPY ./config/supervisor/ /etc/supervisor/
 COPY --from=composer /usr/bin/composer /usr/bin/composer
 
 # Custom entrypoint to run the app as scheduler or queue worker
-COPY ./build/docker-entrypoint  /usr/local/bin/
+COPY ./build/docker-entrypoint /usr/local/bin/
 CMD ["/usr/local/bin/docker-entrypoint"]
 
 
@@ -53,12 +53,15 @@ USER webdev
 
 # Copy existing application directory contents and change
 # ownership of the application files so that they are not
-# writable by Apache's www-user.
+# writable by Apache's www-user
 COPY --chown=webdev:webdev $SRC ./
 
 # Set proper permissions + install dependencies using Composer
 RUN chmod -R 777 bootstrap/cache storage \
 	&& composer install --no-interaction --no-plugins --prefer-dist --ansi
+
+# Add test script for automated testing
+COPY ./build/run_tests.sh /usr/local/bin/run_tests
 
 # Switch default user back to root
 USER root
