@@ -1,3 +1,5 @@
+[![pipeline status](https://gitlab.com/jarnovanleeuwen/laravel-dock/badges/master/pipeline.svg)](https://gitlab.com/jarnovanleeuwen/laravel-dock/pipelines)
+
 Learning the concepts of [Docker](https://www.docker.com/), I created an example Laravel application using Docker's best architectural and security practices. The boilerplate code in this repository provides:
 
 - Best practices on security (not running as root, no passwordless databases, no unnecessary file permissions).
@@ -5,9 +7,11 @@ Learning the concepts of [Docker](https://www.docker.com/), I created an example
 - A single code base for **development and production environments**.
 - A single `.env` configuration file.
 - A slim `Dockerfile` using only **official images**.
+- Tests structured for your CI/CD pipeline.
 - A convenient binary providing `up`, `artisan`, `build`, `push`, and even `deploy` commands.
 - Deployments to a multi-server cloud environment using **Docker Swarm**.
 - Built-in support for Laravel's key concepts: **scheduling, queues, cache etc.**
+- Built-in Laravel Horizon for managing queue workers through configuration.
 - All configuration in source control (e.g. virtual hosts, OPcache, InnoDB parameters).
 
 # Installation
@@ -67,10 +71,18 @@ ufw allow 4789/udp
 ufw reload
 ```
 
-# To-do
+# CI/CD
+The `sut` service in `docker-compose.test.yml` can be used for automated testing. I have experimented with automated builds and tests on [Docker Hub](https://hub.docker.com/) and [GitLab.com](https://about.gitlab.com/product/continuous-integration/)'s CI/CD pipelines.
 
-- Integrate Laravel Horizon.
-- Automated tests.
-- Automated builds.
-- Automated deployments.
-- Let's Encrypt support.
+## DockerHub
+In the *Automated builds* configuration section, make sure to set the *Dockerfile location* to `build/Dockerfile` in your build rules.
+
+## GitLab.com
+The build, test and release CI/CD pipeline stages are defined in `.gitlab-ci.yml`.
+
+## Other
+To  1) start the required services (i.e. MySQL), 2) wait for them to be ready, 3) run the database migrations and 4) run `phpunit`:
+
+```bash
+docker-compose -f build/docker-compose.test.yml run sut
+```
