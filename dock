@@ -46,15 +46,16 @@ if [ $# -gt 0 ]; then
     if [[ $REPLY =~ ^[Yy]$ ]]; then
       echo -n "Uploading deployment configuration..."
       ssh ${DEPLOY_SERVER} "mkdir -p ${APP_ID}"
-      scp -r $0 ${BUILD_DIR} ${DEPLOY_SERVER}:~/${APP_ID} > /dev/null && echo "OK"
-      ssh ${DEPLOY_SERVER} "cd ${APP_ID}; (docker login && docker-compose -f ${COMPOSE_BASE} -f ${COMPOSE_PROD} config 2>/dev/null | docker stack deploy --with-registry-auth --prune --compose-file - ${APP_ID}) || echo \"Login to registry failed\""
+      scp -r dock dock-swarm ${BUILD_DIR} ${DEPLOY_SERVER}:~/${APP_ID} > /dev/null && echo "OK"
+
+      ssh ${DEPLOY_SERVER} "cd ${APP_ID} && ./dock-swarm deploy"
     fi
 
   elif [ "$1" == "deploy-migrations" ]; then
     read -p "Are you sure you want to run database migrations on [${DEPLOY_SERVER}]? (y/N) " -r
     echo
     if [[ $REPLY =~ ^[Yy]$ ]]; then
-      ssh ${DEPLOY_SERVER} "docker run --rm --net ${APP_ID}_network --env DB_HOST=db --env DB_PORT=3306 --env-file ${APP_ID}/.env ${DOCKER_REPOSITORY} php artisan migrate --force"
+      ssh ${DEPLOY_SERVER} "cd ${APP_ID} && ./dock-swarm deploy-migrations"
     fi
 
   elif [ "$1" == "clean" ]; then

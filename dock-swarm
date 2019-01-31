@@ -1,0 +1,31 @@
+#!/usr/bin/env bash
+
+set -e
+source .env
+
+BUILD_DIR="build/"
+
+COMPOSE_BASE="${BUILD_DIR}docker-compose.yml"
+COMPOSE_PROD="${BUILD_DIR}docker-compose.prod.yml"
+
+if [ $# -gt 0 ]; then
+
+  if [ "$1" == "config" ]; then
+    docker-compose -f ${COMPOSE_BASE} -f ${COMPOSE_PROD} config 2>/dev/null
+    
+  elif [ "$1" == "deploy" ]; then
+    if docker login -u ${REGISTRY_USER} -p ${REGISTRY_PASSWORD} ${REGISTRY} > /dev/null 2>&1; then
+      ./$0 config | docker stack deploy --with-registry-auth --prune --compose-file - ${APP_ID}
+    else
+      echo "Login to registry failed for [${REGISTRY_USER}] at [${REGISTRY}]"
+    fi
+
+  elif [ "$1" == "deploy-migrations" ]; then
+    docker run --rm --net ${APP_ID}_network --env DB_HOST=db --env DB_PORT=3306 --env-file .env ${DOCKER_REPOSITORY} php artisan migrate --force
+
+  else
+      echo "Usage: $0 <config|deploy|deploy-migrations>"
+  fi
+else
+  docker stack services ${APP_ID}
+fi
