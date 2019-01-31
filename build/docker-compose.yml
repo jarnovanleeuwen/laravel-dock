@@ -22,9 +22,20 @@ services:
 
   # Scheduler
   scheduler:
-    user: www-data
+    user: webdev
     environment:
       - CONTAINER_ROLE=scheduler
+      - DB_HOST=db
+      - DB_PORT=3306
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+    env_file: ../.env
+
+  # Queue worker
+  queue:
+    user: webdev
+    environment:
+      - CONTAINER_ROLE=queue
       - DB_HOST=db
       - DB_PORT=3306
       - REDIS_HOST=redis

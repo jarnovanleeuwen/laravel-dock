@@ -14,8 +14,8 @@ if [ "$role" = "app" ]; then
     exec apache2-foreground
 
 elif [ "$role" = "queue" ]; then
-    echo "Running queue worker..."
-    php artisan queue:work --verbose --tries=1 --timeout=90
+    echo "Starting Supervisor..."
+    supervisord -n
 
 elif [ "$role" = "scheduler" ]; then
     echo "Running scheduler..."

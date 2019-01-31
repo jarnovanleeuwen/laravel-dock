@@ -1,0 +1,48 @@
+# Cannot use 3.7+ in Docker Hub automated testing as of January, 30th
+version: '3.6'
+
+# Docker Network
+networks:
+  network:
+    driver: bridge
+
+services:
+  # Apache + PHP
+  sut:
+    build:
+      context: ../
+      dockerfile: build/Dockerfile
+    image: app-local
+    environment:
+      - CONTAINER_ROLE=app
+      - DB_HOST=db
+      - DB_PORT=3306
+      - DB_DATABASE=laraveldock
+      - DB_USERNAME=root
+      - DB_PASSWORD=root
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - REDIS_PASSWORD=
+    command: run_tests
+    depends_on:
+      - db
+      - redis
+    networks:
+      - network
+
+  # MySQL
+  db:
+    image: mysql:5.7
+    command: ["--character-set-server=utf8mb4", "--collation-server=utf8mb4_unicode_ci"]
+    environment:
+      - MYSQL_ROOT_PASSWORD=root
+      - MYSQL_DATABASE=laraveldock
+    networks:
+      - network
+
+  # Redis
+  redis:
+    image: redis:5.0
+    command: ["redis-server", "--appendonly", "yes"]
+    networks:
+      - network

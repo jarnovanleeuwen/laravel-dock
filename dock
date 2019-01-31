@@ -3,6 +3,7 @@
 set -e
 source .env
 
+APP_USER="webdev"
 BUILD_DIR="build/"
 
 DOCKERFILE="${BUILD_DIR}/Dockerfile"
@@ -19,6 +20,9 @@ if [ $# -gt 0 ]; then
 
   elif [ "$1" == "scheduler" ]; then
     ${COMPOSE} up --build scheduler
+
+  elif [ "$1" == "queue" ]; then
+    ${COMPOSE} up --build queue
 
   elif [ "$1" == "down" ]; then
     ${COMPOSE} down
@@ -43,7 +47,7 @@ if [ $# -gt 0 ]; then
       echo -n "Uploading deployment configuration..."
       ssh ${DEPLOY_SERVER} "mkdir -p ${APP_ID}"
       scp -r $0 ${BUILD_DIR} ${DEPLOY_SERVER}:~/${APP_ID} > /dev/null && echo "OK"
-      ssh ${DEPLOY_SERVER} "cd ${APP_ID}; docker-compose -f ${COMPOSE_BASE} -f ${COMPOSE_PROD} config 2>/dev/null | docker stack deploy --with-registry-auth --prune --compose-file - ${APP_ID}"
+      ssh ${DEPLOY_SERVER} "cd ${APP_ID}; (docker login && docker-compose -f ${COMPOSE_BASE} -f ${COMPOSE_PROD} config 2>/dev/null | docker stack deploy --with-registry-auth --prune --compose-file - ${APP_ID}) || echo \"Login to registry failed\""
     fi
 
   elif [ "$1" == "deploy-migrations" ]; then
@@ -59,17 +63,17 @@ if [ $# -gt 0 ]; then
   elif [ "$1" == "exec" ]; then
     shift 1
     ARGS="$@"
-    ${COMPOSE} exec app bash -c "$ARGS"
+    ${COMPOSE} exec --user ${APP_USER} app bash -c "$ARGS"
 
   elif [ "$1" == "test" ]; then
     shift 1
     ARGS="$@"
-    ${COMPOSE} exec app bash -c "vendor/bin/phpunit $ARGS"
+    ${COMPOSE} exec --user ${APP_USER} app bash -c "vendor/bin/phpunit $ARGS"
 
   elif [ "$1" == "artisan" ]; then
     shift 1
     ARGS="$@"
-    ${COMPOSE} exec app bash -c "php artisan $ARGS"
+    ${COMPOSE} exec --user ${APP_USER} app bash -c "php artisan $ARGS"
 
   else
       ${COMPOSE} "$@"

@@ -37,6 +37,21 @@ services:
       restart_policy:
         condition: on-failure
 
+  # Queue worker
+  queue:
+    image: ${DOCKER_REPOSITORY}
+    volumes:
+      - /var/www/html/storage
+    networks:
+      - network
+    deploy:
+      replicas: 1
+      placement:
+        constraints:
+          - node.labels.tag == web
+      restart_policy:
+        condition: on-failure
+
   # MySQL
   db:
     networks:
