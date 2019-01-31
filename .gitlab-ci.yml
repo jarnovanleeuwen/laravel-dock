@@ -1,37 +1,42 @@
-image: docker:latest
-
-variables:
-  APP_TAG: app-local
-  BUILD_DIR: build/
-
+image: tmaier/docker-compose:latest
 services:
   - docker:dind
 
+stages:
+  - build
+  - test
+  - release
+  - deploy
+
+variables:
+  APP_TAG: app-local
+  TEST_TAG: $CI_REGISTRY_IMAGE:$CI_COMMIT_REF_SLUG
+  RELEASE_TAG: $CI_REGISTRY_IMAGE:latest
+  BUILD_DIR: build/
+
 before_script:
+  - docker info
+  - docker-compose --version
   - docker login -u "$CI_REGISTRY_USER" -p "$CI_REGISTRY_PASSWORD" $CI_REGISTRY
 
 build:
   stage: build
   script:
-    - docker build --pull --file $BUILD_DIR/Dockerfile --target production --tag "$APP_TAG" .
+    - docker build --pull --file $BUILD_DIR/Dockerfile --target production --tag $TEST_TAG .
+    - docker push $TEST_TAG
 
 test:
   stage: test
   script:
+    - docker pull $TEST_TAG
+    - docker tag $TEST_TAG $APP_TAG
     - docker-compose -f $BUILD_DIR/docker-compose.test.yml run sut
 
-deploy:
-  stage: deploy
+release:
+  stage: release
   script:
-    - docker tag "$APP_TAG" "$CI_REGISTRY_IMAGE:$CI_COMMIT_REF_SLUG"
-    - docker push "$CI_REGISTRY_IMAGE:$CI_COMMIT_REF_SLUG"
-  except:
-    - master
-
-deploy-master:
-  stage: deploy
-  script:
-    - docker tag "$APP_TAG" "$CI_REGISTRY_IMAGE"
-    - docker push "$CI_REGISTRY_IMAGE"
+    - docker pull $TEST_TAG
+    - docker tag $TEST_TAG $RELEASE_TAG
+    - docker push $RELEASE_TAG
   only:
     - master
