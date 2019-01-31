@@ -1,0 +1,37 @@
+image: docker:latest
+
+variables:
+  APP_TAG: app-local
+  BUILD_DIR: build/
+
+services:
+  - docker:dind
+
+before_script:
+  - docker login -u "$CI_REGISTRY_USER" -p "$CI_REGISTRY_PASSWORD" $CI_REGISTRY
+
+build:
+  stage: build
+  script:
+    - docker build --pull --file $BUILD_DIR/Dockerfile --target production --tag "$APP_TAG" .
+
+test:
+  stage: test
+  script:
+    - docker-compose -f $BUILD_DIR/docker-compose.test.yml run sut
+
+deploy:
+  stage: deploy
+  script:
+    - docker tag "$APP_TAG" "$CI_REGISTRY_IMAGE:$CI_COMMIT_REF_SLUG"
+    - docker push "$CI_REGISTRY_IMAGE:$CI_COMMIT_REF_SLUG"
+  except:
+    - master
+
+deploy-master:
+  stage: deploy
+  script:
+    - docker tag "$APP_TAG" "$CI_REGISTRY_IMAGE"
+    - docker push "$CI_REGISTRY_IMAGE"
+  only:
+    - master

@@ -12,6 +12,7 @@ services:
     build:
       context: ../
       dockerfile: build/Dockerfile
+    image: app-local
     environment:
       - CONTAINER_ROLE=app
       - DB_HOST=db
