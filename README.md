@@ -9,7 +9,7 @@ Learning the concepts of [Docker](https://www.docker.com/), I created an example
 - A slim `Dockerfile` using only **official images**.
 - Tests structured for your CI/CD pipeline.
 - A convenient binary providing `up`, `artisan`, `build`, `push`, and even `deploy` commands.
-- Deployments to a multi-server cloud environment using **Docker Swarm**.
+- Deployments to a multi-server cloud environment using **Kubernetes** or **Docker Swarm**.
 - Built-in support for Laravel's key concepts: **scheduling, queues, cache etc.**
 - Built-in Laravel Horizon for managing queue workers through configuration.
 - All configuration in source control (e.g. virtual hosts, OPcache, InnoDB parameters).
