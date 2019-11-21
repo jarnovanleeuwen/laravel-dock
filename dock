@@ -37,6 +37,9 @@ if [ $# -gt 0 ]; then
   elif [ "$1" == "push" ]; then
     docker push ${DOCKER_REPOSITORY}
 
+  elif [ "$1" == "login" ]; then
+    docker login -u ${REGISTRY_USER} -p ${REGISTRY_PASSWORD} ${REGISTRY}
+
   elif [ "$1" == "build" ]; then
     docker build --file ${DOCKERFILE} --target production --tag ${DOCKER_REPOSITORY} .
 

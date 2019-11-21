@@ -1,0 +1,283 @@
+# Create a secret named 'regcred' for your Docker registry credentials.
+#   kubectl create secret docker-registry regcred --docker-server=<Registry server> --docker-username=<Username> --docker-password=<Password>
+#
+# Create a secret named 'app-secrets' for secret keys and passwords, such as for root access to your MySQL database.
+# Those will be passed to your app containers as environment variables.
+#   kubectl create secret generic app-secrets --from-literal=APP_KEY='8NTmvFb2YjzkhkvVNDU6Urd2l4tBCXem' --from-literal=DB_PASSWORD='<MySQL password>' --from-literal=REDIS_PASSWORD='<Redis password>'
+
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: app-config
+data:
+  APP_NAME: "laravel-dock on Kubernetes"
+  APP_ENV: "production"
+  APP_DEBUG: "true"
+  APP_URL: "http://localhost"
+
+  LOG_CHANNEL: "stack"
+
+  DB_HOST: "mysql"
+  DB_DATABASE: "laraveldock"
+  DB_USERNAME: "root"
+
+  REDIS_HOST: "redis"
+
+  BROADCAST_DRIVER: "log"
+  CACHE_DRIVER: "redis"
+  QUEUE_CONNECTION: "redis"
+  SESSION_DRIVER: "file"
+
+---
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: web
+spec:
+  type: LoadBalancer
+  selector:
+    app: web
+  ports:
+  - port: 80
+
+---
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: web
+spec:
+  selector:
+    matchLabels:
+      app: web
+  replicas: 2
+  template:
+    metadata:
+      labels:
+        app: web
+    spec:
+      containers:
+      - name: app
+        image: docker.pkg.github.com/jarnovanleeuwen/laravel-dock/app:master
+        envFrom:
+        - configMapRef:
+            name: app-config
+        - secretRef:
+            name: app-secrets
+        env:
+        - name: CONTAINER_ROLE
+          value: "app"
+        ports:
+        - containerPort: 80
+      imagePullSecrets:
+      - name: regcred
+
+---
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: scheduler
+spec:
+  selector:
+    matchLabels:
+      app: scheduler
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        app: scheduler
+    spec:
+      containers:
+      - name: app
+        image: docker.pkg.github.com/jarnovanleeuwen/laravel-dock/app:master
+        envFrom:
+        - configMapRef:
+            name: app-config
+        - secretRef:
+            name: app-secrets
+        env:
+        - name: CONTAINER_ROLE
+          value: "scheduler"
+      imagePullSecrets:
+      - name: regcred
+
+---
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: queue
+spec:
+  selector:
+    matchLabels:
+      app: queue
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        app: queue
+    spec:
+      containers:
+      - name: app
+        image: docker.pkg.github.com/jarnovanleeuwen/laravel-dock/app:master
+        envFrom:
+        - configMapRef:
+            name: app-config
+        - secretRef:
+            name: app-secrets
+        env:
+        - name: CONTAINER_ROLE
+          value: "queue"
+      imagePullSecrets:
+      - name: regcred
+
+---
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: mysql
+spec:
+  selector:
+    app: mysql
+  ports:
+  - port: 3306
+  clusterIP: None # As an optimization, because there always is 1 Pod.
+
+---
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mysql
+spec:
+  selector:
+    matchLabels:
+      app: mysql
+  strategy:
+    type: Recreate # Do not use rolling updates.
+  template:
+    metadata:
+      labels:
+        app: mysql
+    spec:
+      containers:
+      - name: mysql
+        image: mysql:5.7
+        args: ["--character-set-server=utf8mb4", "--collation-server=utf8mb4_unicode_ci"]
+        env:
+        - name: MYSQL_ROOT_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: app-secrets
+              key: DB_PASSWORD
+        - name: MYSQL_DATABASE
+          valueFrom:
+            configMapKeyRef:
+              name: app-config
+              key: DB_DATABASE
+        ports:
+        - containerPort: 3306
+        volumeMounts:
+        - name: mysql-persistent-storage
+          mountPath: /var/lib/mysql
+      initContainers:
+      # Formatted volumes might contain a 'lost+found' directory.
+      # Remove it, because MySQL requires an empty directory for initialization.
+      - name: mysql-initialization-fix
+        image: busybox
+        command: ["rm", "-rf", "/data/lost+found"]
+        volumeMounts:
+        - name: mysql-persistent-storage
+          mountPath: /data
+      volumes:
+      - name: mysql-persistent-storage
+        persistentVolumeClaim:
+          claimName: mysql-pv-claim
+
+---
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: redis
+spec:
+  selector:
+    app: redis
+  ports:
+  - port: 6379
+  clusterIP: None # As an optimization, because there always is 1 Pod.
+
+---
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: redis
+spec:
+  selector:
+    matchLabels:
+      app: redis
+  strategy:
+    type: Recreate # Do not use rolling updates.
+  template:
+    metadata:
+      labels:
+        app: redis
+    spec:
+      containers:
+      - name: redis
+        image: redis:5.0
+        command: ["redis-server"]
+        args: ["--appendonly", "yes", "--requirepass", "$(REDIS_PASSWORD)"]
+        env:
+        - name: REDIS_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: app-secrets
+              key: REDIS_PASSWORD
+        ports:
+        - containerPort: 6379
+        volumeMounts:
+        - name: redis-persistent-storage
+          mountPath: /data
+      volumes:
+      - name: redis-persistent-storage
+        persistentVolumeClaim:
+          claimName: redis-pv-claim
+
+---
+
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: mysql-pv-claim
+spec:
+  # This volume is controlled by DigitalOcean.
+  # The definition can be different for your cloud provider.
+  storageClassName: do-block-storage
+  accessModes:
+  - ReadWriteOnce
+  resources:
+    requests:
+      storage: 5Gi
+
+---
+
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: redis-pv-claim
+spec:
+  # This volume is controlled by DigitalOcean.
+  # The definition can be different for your cloud provider.
+  storageClassName: do-block-storage
+  accessModes:
+  - ReadWriteOnce
+  resources:
+    requests:
+      storage: 5Gi

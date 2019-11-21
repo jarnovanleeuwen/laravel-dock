@@ -13,7 +13,7 @@ RUN useradd --create-home webdev
 WORKDIR /var/www/html
 
 # Install dependencies
-RUN apt-get update && apt-get install -y mysql-client nano supervisor zip
+RUN apt-get update && apt-get install -y mariadb-client nano supervisor zip
 
 # Install extensions
 RUN docker-php-ext-install opcache pcntl pdo_mysql

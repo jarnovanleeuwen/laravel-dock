@@ -13,6 +13,7 @@ Learning the concepts of [Docker](https://www.docker.com/), I created an example
 - Built-in support for Laravel's key concepts: **scheduling, queues, cache etc.**
 - Built-in Laravel Horizon for managing queue workers through configuration.
 - All configuration in source control (e.g. virtual hosts, OPcache, InnoDB parameters).
+- Compatible with GitHub Actions & Packages, DockerHub, GitLab and other CI/CD services.
 
 # Installation
 
@@ -22,6 +23,7 @@ Learning the concepts of [Docker](https://www.docker.com/), I created an example
 - Clone this repository
 - Copy `.env.example` to `.env` and edit the file to match your environment.
 - Run `./dock up`
+- Run `./dock exec composer install`
 - Run `./dock artisan migrate`
 - Visit http://localhost/status
 
@@ -51,6 +53,8 @@ By default, Apache binds to port 80 and MySQL to port 3306. This, and much more,
 
 # Setting up a multiserver environment
 
+### Docker Swarm
+
 Basically, any server with [Docker Swarm](https://docs.docker.com/engine/swarm/) that can be reached over SSH can be used. To give an idea on how easy it is to setup a multiserver environment, I will include the setup steps below. The steps apply to any cloud server provider, such as DigitalOcean or AWS.
 
 - Create an SSH accessible 'manager' server and initialise the swarm: `docker swarm init --advertise-addr={Private IP}`.
@@ -60,19 +64,61 @@ Basically, any server with [Docker Swarm](https://docs.docker.com/engine/swarm/)
 - On the deployment server (or developer machine) specify `DEPLOY_SERVER`.
 - 🚀 Execute a rolling deployment using `./dock deploy`.
 
-Notes: this is a simple setup for illustration purposes. In real production environment, an odd number of 3+ manager nodes is recommended for optimal fault tolerance. The same holds for replicating the web and database servers. Moreover, the swarm can be completely isolated from the Internet by only allowing Docker Swarm traffic between nodes and restricting all other traffic. Add a load balancer setup to forward public traffic on ports 80 and 443 to the swarm. Then, only the manager node would need to open port 22 (SSH) to known deployment hosts.
+Note: this is a simple setup for illustration purposes. In real production environment, an odd number of 3+ manager nodes is recommended for optimal fault tolerance. The same holds for replicating the web and database servers. Moreover, the swarm can be completely isolated from the Internet by only allowing Docker Swarm traffic between nodes and restricting all other traffic. Add a load balancer setup to forward public traffic on ports 80 and 443 to the swarm. Then, only the manager node would need to open port 22 (SSH) to known deployment hosts.
 
-Opening the required ports on swarm nodes in UFW:
-```bash
-ufw allow 2377/tcp
-ufw allow 7946/tcp
-ufw allow 7946/udp
-ufw allow 4789/udp
-ufw reload
+### Kubernetes
+
+Assuming you have a Kubernetes cluster, you can deploy the Laravel application, including MySQL, Redis, Horizon and a scheduler by applying the [`kubernetes.yaml`](https://github.com/jarnovanleeuwen/laravel-dock/blob/master/build/kubernetes.yaml) config. It has only been tested with DigitalOcean's persistent volumes, but the configuration can easily be updated for other cloud providers. 
+
+First, create secrets for the Docker registry and application keys and passwords.
+```sh
+kubectl create secret docker-registry regcred --docker-server=<Registry server> --docker-username=<Username> --docker-password=<Password>
+kubectl create secret generic app-secrets --from-literal=APP_KEY='8NTmvFb2YjzkhkvVNDU6Urd2l4tBCXem' --from-literal=DB_PASSWORD='<MySQL password>' --from-literal=REDIS_PASSWORD='<Redis password>'
+```
+
+Then, deploy the application.
+```sh
+kubectl apply -f build/kubernetes.yaml
+```
+
+Finally, you can run the migrations or any other artisan command.
+```sh
+kubectl exec -it svc/web -- php artisan migrate
 ```
 
 # CI/CD
-The `sut` service in `docker-compose.test.yml` can be used for automated testing. I have experimented with automated builds and tests on [Docker Hub](https://hub.docker.com/) and [GitLab.com](https://about.gitlab.com/product/continuous-integration/)'s CI/CD pipelines.
+The `sut` service in `docker-compose.test.yml` can be used for automated testing. I have experimented with automated builds and tests on [Docker Hub](https://hub.docker.com/) and [GitLab.com](https://about.gitlab.com/product/continuous-integration/)'s CI/CD pipelines. Recently, I have also added examples for GitHub's [Actions](https://github.com/features/actions) and [Packages](https://github.com/features/packages).
+
+## GitHub
+### Actions
+Use the following GitHub Actions workflow to build and test your Docker image:
+
+```yaml
+name: Build and Test
+on: push
+
+jobs:
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@master
+      - name: Build image
+        run: docker build --file build/Dockerfile --target production --tag app-local .
+      - name: Run PHPUnit
+        run: docker-compose -f build/docker-compose.test.yml run sut
+```
+
+### Packages
+The GitHub Package Registry can be used to store your Docker images. You should [Create a personal access token](https://help.github.com/en/github/authenticating-to-github/creating-a-personal-access-token-for-the-command-line) and edit your `.env` file accordingly:
+
+```dotenv
+DOCKER_REPOSITORY=docker.pkg.github.com/<Organisation>/<Repository>/<Image>
+
+REGISTRY=docker.pkg.github.com
+REGISTRY_USER=<Your GitHub username>
+REGISTRY_PASSWORD=<Your personal access token>
+```
 
 ## DockerHub
 In the *Automated builds* configuration section, make sure to set the *Dockerfile location* to `build/Dockerfile` in your build rules.
