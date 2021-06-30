@@ -1,5 +1,7 @@
 <?php
 
+use Illuminate\Support\Facades\Route;
+
 /*
 |--------------------------------------------------------------------------
 | Web Routes
@@ -10,5 +12,9 @@
 | contains the "web" middleware group. Now create something great!
 |
 */
-Route::get('/status', 'StatusController');
-Route::get('/', 'WelcomeController');
+
+Route::get('/', function () {
+    return view('status', [
+        'migrations' => DB::table('migrations')->orderBy('id')->pluck('migration')
+    ]);
+});

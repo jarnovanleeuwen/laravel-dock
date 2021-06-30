@@ -4,38 +4,46 @@ ARG SRC="./src"
 #
 # Apache + PHP
 #
-FROM php:7.2-apache as app
+FROM php:8.0-apache as app
+
+# Install dependencies
+RUN apt-get update && apt-get install -y git mariadb-client nano supervisor libpng-dev libjpeg-dev libicu-dev libxml2-dev libzip-dev zip gnupg2 ssl-cert redis-tools
+
+# Install extensions
+RUN pecl install redis xdebug
+
+RUN docker-php-ext-configure gd --with-jpeg &&\
+	docker-php-ext-configure intl && \
+    docker-php-ext-configure zip && \
+	docker-php-ext-install bcmath gd intl opcache pcntl pdo_mysql soap zip && \
+	docker-php-ext-enable redis xdebug
 
 # Create non-root user
 RUN useradd --create-home webdev
 
-# Set working directory
-WORKDIR /var/www/html
-
-# Install dependencies
-RUN apt-get update && apt-get install -y mariadb-client nano supervisor zip
-
-# Install extensions
-RUN docker-php-ext-install opcache pcntl pdo_mysql
-# RUN docker-php-ext-configure gd --with-gd --with-freetype-dir=/usr/include/ --with-jpeg-dir=/usr/include/ --with-png-dir=/usr/include/
-# RUN docker-php-ext-install gd
-
-# Use default PHP production configuration and enable Apache's mod_rewrite
-RUN mv $PHP_INI_DIR/php.ini-production $PHP_INI_DIR/php.ini \
-	&& a2enmod rewrite
+# Use default PHP production configuration and enable Apache's mod_rewrite and mod_ssl.
+RUN mv $PHP_INI_DIR/php.ini-production $PHP_INI_DIR/php.ini && \
+	chown -R webdev $PHP_INI_DIR/conf.d && \
+	a2enmod ssl && \
+	a2enmod rewrite
 
 # Override with custom PHP settings
-COPY ./config/php/local.ini $PHP_INI_DIR/conf.d/local.ini
+COPY ./config/php/php.ini $PHP_INI_DIR/conf.d/php.ini
 
 # Overwrite the default Apache vhost with the custom vhost
 COPY ./config/apache/vhost.conf /etc/apache2/sites-available/000-default.conf
 
 # Add Supervisor config for Laravel Horizon
-RUN rm -rf /var/log/supervisor ; mkdir -m 777 /var/log/supervisor
-COPY ./config/supervisor/ /etc/supervisor/
+COPY ./config/supervisor/supervisord.conf /etc/supervisor/conf.d/supervisord.conf
+
+# Copy useful scripts (e.g. scripts that help waiting for services to boot)
+COPY ./build/bin/ /usr/local/bin/
 
 # Install Composer
-COPY --from=composer /usr/bin/composer /usr/bin/composer
+COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
+
+# Set working directory
+WORKDIR /var/www/html
 
 # Custom entrypoint to run the app as scheduler or queue worker
 COPY ./build/docker-entrypoint /usr/local/bin/
@@ -57,11 +65,9 @@ USER webdev
 COPY --chown=webdev:webdev $SRC ./
 
 # Set proper permissions + install dependencies using Composer
-RUN chmod -R 777 bootstrap/cache storage \
+RUN touch storage/logs/laravel.log \
+    && chmod -R 777 bootstrap/cache storage \
 	&& composer install --no-interaction --no-plugins --prefer-dist --ansi
-
-# Add test script for automated testing
-COPY ./build/run_tests.sh /usr/local/bin/run_tests
 
 # Switch default user back to root
 USER root
