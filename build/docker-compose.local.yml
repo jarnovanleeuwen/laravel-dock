@@ -4,15 +4,31 @@ version: '3.7'
 networks:
   network:
     driver: bridge
+    attachable: true
+
+# Volumes
+volumes:
+  mysql:
+    driver: local
+  redis:
+    driver: local
 
 services:
   # Apache + PHP
-  app:
+  web:
     build:
       context: ../
       dockerfile: build/Dockerfile
       target: app
     image: app-local
+    environment:
+      - CONTAINER_ROLE=app
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+    env_file: ../.env
+    ports:
+      - "${HOST_PORT_HTTP:-80}:80"
+      - "${HOST_PORT_HTTPS:-443}:443"
     depends_on:
       - db
       - redis
@@ -24,8 +40,14 @@ services:
   # Scheduler
   scheduler:
     image: app-local
+    user: webdev
+    environment:
+      - CONTAINER_ROLE=scheduler
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+    env_file: ../.env
     depends_on:
-      - app
+      - web
     volumes:
       - ../src:/var/www/html:delegated
     networks:
@@ -34,8 +56,13 @@ services:
   # Queue worker
   queue:
     image: app-local
+    environment:
+      - CONTAINER_ROLE=queue
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+    env_file: ../.env
     depends_on:
-      - app
+      - web
     volumes:
       - ../src:/var/www/html:delegated
     networks:
@@ -43,10 +70,28 @@ services:
 
   # MySQL
   db:
+    image: mysql:8.0.23
+    command: [ "--character-set-server=utf8mb4", "--collation-server=utf8mb4_unicode_ci", "--default-authentication-plugin=mysql_native_password" ]
+    environment:
+      - TZ=${TZ}
+      - MYSQL_ROOT_PASSWORD=${DB_PASSWORD}
+      - MYSQL_DATABASE=${DB_DATABASE}
+    env_file: ../.env
+    ports:
+      - "${HOST_PORT_DB:-3306}:3306"
+    volumes:
+      - mysql:/var/lib/mysql/
     networks:
       - network
 
   # Redis
   redis:
+    image: redis:6.2.4
+    command: [ "redis-server", "--appendonly", "yes", "--requirepass", "${REDIS_PASSWORD}" ]
+    env_file: ../.env
+    ports:
+      - "${HOST_PORT_REDIS:-6379}:6379"
+    volumes:
+      - redis:/data
     networks:
       - network

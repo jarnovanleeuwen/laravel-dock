@@ -1,0 +1,16 @@
+#!/usr/bin/env bash
+
+echo -n "Waiting for Redis.."
+
+while ! (REDISCLI_AUTH=$REDIS_PASSWORD redis-cli -h "${REDIS_HOST}" ping | grep PONG > /dev/null); do
+	echo -n .
+	sleep 1
+	((counter++))
+
+	if [ $counter -gt 60 ]; then
+		>&2 echo "failed"
+		exit 1
+	fi
+done
+
+echo

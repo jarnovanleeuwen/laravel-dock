@@ -1,0 +1,31 @@
+name: Build and Test
+on: push
+jobs:
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v2
+      - name: Build image
+        run: ./dock build app
+      - name: Start app
+        run: |
+          ./dock up
+          ./dock exec wait_for_mysql
+          ./dock exec wait_for_redis
+          ./dock exec php artisan migrate
+      - name: Run PHPUnit
+        run: ./dock test:phpunit
+      - name: Show Laravel log
+        if: always()
+        run: ./dock exec "cat storage/logs/laravel.log"
+      - name: Publish image
+        if: github.ref == 'refs/heads/main' || contains(github.event.head_commit.message, '/publish')
+        run: |
+          BRANCH=$(echo "${{ github.ref }}" | sed -e 's,.*/\(.*\),\1,')
+          COMMIT=$(echo "${{ github.sha }}" | cut -c1-7)
+          IMAGE="ghcr.io/jarnovanleeuwen/laravel-dock:${BRANCH}-${COMMIT}"
+          echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+          docker tag app ${IMAGE}
+          docker push ${IMAGE}

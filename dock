@@ -1,22 +1,47 @@
 #!/usr/bin/env bash
 
+# Exit on errors
 set -e
-source .env
 
-APP_USER="webdev"
-BUILD_DIR="build/"
+# Change working directory to the same location as this file.
+cd "$(dirname ${BASH_SOURCE[0]})"
+
+if [ -z "$CI" ]; then
+  source .env
+fi
+
+APP_USER="root"
+BUILD_DIR="build"
 
 DOCKERFILE="${BUILD_DIR}/Dockerfile"
-COMPOSE_BASE="${BUILD_DIR}docker-compose.yml"
-COMPOSE_LOCAL="${BUILD_DIR}docker-compose.local.yml"
-COMPOSE_PROD="${BUILD_DIR}docker-compose.prod.yml"
+KUBERNETES_DEPLOYMENT="${BUILD_DIR}/kubernetes.yaml"
 
-COMPOSE="docker-compose -f ${COMPOSE_BASE} -f ${COMPOSE_LOCAL}"
+print_kubernetes_context() {
+    echo "Using Kubernetes context [$KUBERNETES_CONTEXT]"
+}
+
+if [ -z "$CI" ]; then
+  COMPOSE_PARAMS="-f ${BUILD_DIR}/docker-compose.local.yml --env-file .env";
+else
+  COMPOSE_PARAMS="-f ${BUILD_DIR}/docker-compose.test.yml";
+fi
+
+COMPOSE="docker-compose --project-name ${APP_ID} ${COMPOSE_PARAMS}"
+
+if [ -z "$CI" ]; then
+  RUN="docker run -it"
+else
+  RUN="docker run"
+fi
 
 if [ $# -gt 0 ]; then
 
   if [ "$1" == "up" ]; then
-    ${COMPOSE} up --build --detach app
+    if [ -z "$CI" ]; then
+        ${COMPOSE} up --build --detach web
+    else
+        ${COMPOSE} up --detach web
+    fi
 
   elif [ "$1" == "scheduler" ]; then
     ${COMPOSE} up --build scheduler
@@ -27,57 +52,76 @@ if [ $# -gt 0 ]; then
   elif [ "$1" == "down" ]; then
     ${COMPOSE} down
 
-  elif [ "$1" == "tail" ]; then
-    ${COMPOSE} logs --follow
-
   elif [ "$1" == "restart" ]; then
     ./$0 down
     ./$0 up
 
-  elif [ "$1" == "push" ]; then
-    docker push ${DOCKER_REPOSITORY}
-
-  elif [ "$1" == "login" ]; then
-    docker login -u ${REGISTRY_USER} -p ${REGISTRY_PASSWORD} ${REGISTRY}
-
   elif [ "$1" == "build" ]; then
-    docker build --file ${DOCKERFILE} --target production --tag ${DOCKER_REPOSITORY} .
+    if [ -z "$2" ]; then
+      echo "Tag required"
+      exit
+    fi
+
+    docker build --file ${DOCKERFILE} --target production --tag $2 .
+
+  elif [ "$1" == "push" ]; then
+    if [ -z "$2" ]; then
+      echo "Tag required"
+      exit
+    fi
+
+    if docker login -u ${REGISTRY_USER} -p ${REGISTRY_PASSWORD} ${REGISTRY} > /dev/null 2>&1; then
+      docker push $2
+    else
+      echo "Login to registry failed for [${REGISTRY_USER}] at [${REGISTRY}]"
+    fi
 
   elif [ "$1" == "deploy" ]; then
-    read -p "Are you sure you want to deploy [${DOCKER_REPOSITORY}] to [${DEPLOY_SERVER}]? (y/N) " -r
+    if [ -z "$2" ]; then
+      echo "Build ID required"
+      exit
+    fi
+    print_kubernetes_context
+    echo
+    read -p "Are you sure you want to deploy [$2]? (y/N) " -r
     echo
     if [[ $REPLY =~ ^[Yy]$ ]]; then
-      echo -n "Uploading deployment configuration..."
-      ssh ${DEPLOY_SERVER} "mkdir -p ${APP_ID}"
-      scp -r dock dock-swarm ${BUILD_DIR} ${DEPLOY_SERVER}:~/${APP_ID} > /dev/null && echo "OK"
-
-      ssh ${DEPLOY_SERVER} "cd ${APP_ID} && ./dock-swarm deploy"
+      cat ${KUBERNETES_DEPLOYMENT} | sed "s/{{TAG}}/$2/g" | kubectl apply --context=${KUBERNETES_CONTEXT} -f -
+      echo
+      echo -e "Done! To view the status run:\n\n\t./dock status\n"
     fi
 
-  elif [ "$1" == "deploy-migrations" ]; then
-    read -p "Are you sure you want to run database migrations on [${DEPLOY_SERVER}]? (y/N) " -r
-    echo
-    if [[ $REPLY =~ ^[Yy]$ ]]; then
-      ssh ${DEPLOY_SERVER} "cd ${APP_ID} && ./dock-swarm deploy-migrations"
-    fi
+  elif [ "$1" == "status" ]; then
+    print_kubernetes_context
+    kubectl --context ${KUBERNETES_CONTEXT} get pods,deployments,statefulsets,hpa -o wide
 
-  elif [ "$1" == "clean" ]; then
-    docker system prune
+  elif [ "$1" == "tail" ]; then
+    $0 exec "cd storage/logs && tail -n 1000 -F laravel.log"
 
   elif [ "$1" == "exec" ]; then
     shift 1
     ARGS="$@"
-    ${COMPOSE} exec --user ${APP_USER} app bash -c "$ARGS"
+    if [ -z "$CI" ]; then
+        ${COMPOSE} exec --user ${APP_USER} web bash -c "$ARGS"
+    else
+        ${COMPOSE} exec -T web bash -c "$ARGS"
+    fi
 
-  elif [ "$1" == "test" ]; then
+  elif [ "$1" == "kubectl" ]; then
     shift 1
     ARGS="$@"
-    ${COMPOSE} exec --user ${APP_USER} app bash -c "vendor/bin/phpunit $ARGS"
+    print_kubernetes_context
+    kubectl --context ${KUBERNETES_CONTEXT} ${ARGS}
+
+  elif [ "$1" == "test:phpunit" ]; then
+    shift 1
+    ARGS="$@"
+    $0 exec "vendor/bin/phpunit $ARGS"
 
   elif [ "$1" == "artisan" ]; then
     shift 1
     ARGS="$@"
-    ${COMPOSE} exec --user ${APP_USER} app bash -c "php artisan $ARGS"
+    $0 exec "php artisan $ARGS"
 
   else
       ${COMPOSE} "$@"
