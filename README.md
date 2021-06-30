@@ -1,4 +1,4 @@
-[![pipeline status](https://gitlab.com/jarnovanleeuwen/laravel-dock/badges/master/pipeline.svg)](https://gitlab.com/jarnovanleeuwen/laravel-dock/pipelines)
+[![Build and Test](https://github.com/jarnovanleeuwen/laravel-dock/actions/workflows/push.yml/badge.svg)](https://github.com/jarnovanleeuwen/laravel-dock/actions/workflows/push.yml)
 
 Learning the concepts of [Docker](https://www.docker.com/), I created an example Laravel application using Docker's best architectural and security practices. The boilerplate code in this repository provides:
 
@@ -71,4 +71,6 @@ Finally, you can run the migrations or any other artisan command.
 ```
 
 # GitHub Actions
-See push.yml for an example workflow that builds the image, starts the application, runs the tests and publishes the image to the GitHub Container Registry. Images are tagged with the SHA-hash of the commit that triggered the build. By default, the image is only published for builds in the `main` branch. However, the image is also published in other branches when the commit message includes the string `/publish`.
+This repository includes and uses an example workflow that builds the image, starts the application, runs the tests and publishes the image to the GitHub Container Registry. Images are tagged with the SHA-hash of the commit that triggered the build. By default, the image is only published for builds in the `main` branch. However, the image is also published in other branches when the commit message includes the string `/publish`.
+
+You can find the workflow at https://github.com/jarnovanleeuwen/laravel-dock/blob/main/.github/workflows/push.yml.

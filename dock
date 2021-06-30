@@ -10,6 +10,7 @@ if [ -z "$CI" ]; then
   source .env
 fi
 
+APP_ID=${APP_ID:-laraveldock}
 APP_USER="root"
 BUILD_DIR="build"
 
