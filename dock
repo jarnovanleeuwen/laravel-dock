@@ -39,7 +39,7 @@ if [ $# -gt 0 ]; then
 
   if [ "$1" == "up" ]; then
     if [ -z "$CI" ]; then
-        ${COMPOSE} up --build web
+        ${COMPOSE} up --build db redis web
     else
         ${COMPOSE} up --detach web
     fi
