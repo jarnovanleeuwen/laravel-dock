@@ -25,7 +25,19 @@ Learning the concepts of [Docker](https://www.docker.com/), I created an example
 - Run `./dock up`
 - Run `./dock exec composer install`
 - Run `./dock artisan migrate`
-- Visit http://localhost/status
+- Visit http://localhost
+
+The application will show a status page that can be used to help you understand how the cache, scheduler and queue work together. When the scheduler is running, it will dispatch a job every minute that is being processed immediately when the queue (Horizon) is running. Example output:
+
+```
+Database Driver mysql
+Database Server db:3306
+Cache Driver    redis
+Queue Driver    redis
+Cache Test      11:21:50 (TTL: 1 minute)
+Scheduler Test  2 jobs dispatched
+Queue Test      2 jobs handled
+```
 
 # Usage
 
