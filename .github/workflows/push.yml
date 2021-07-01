@@ -16,7 +16,7 @@ jobs:
           ./dock exec wait_for_redis
           ./dock exec php artisan migrate
       - name: Run PHPUnit
-        run: ./dock test:phpunit
+        run: ./dock test
       - name: Show Laravel log
         if: always()
         run: ./dock exec "cat storage/logs/laravel.log"
