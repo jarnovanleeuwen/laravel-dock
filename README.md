@@ -51,9 +51,9 @@ The stack can be managed through the `dock <command>` command-line executable. I
 | `scheduler` | Start Laravel's scheduler daemon. |
 | `queue` | Start Laravel Horizon (queue workers). |
 | `tail` | Tail and follow the Laravel logs. |
-| `build [tag]` | Build and tag an image ready for production. |
-| `push [tag]` | Push the latest image to the container registry defined in `REGISTRY`. |
-| `deploy [tag]` | Deploy to Kubernetes |
+| `build <tag>` | Build and tag an image ready for production. |
+| `push <tag>` | Push the latest image to the container registry defined in `REGISTRY`. |
+| `deploy <tag>` | Deploy to Kubernetes |
 | `exec [...]` | Run arbitrary commands inside the running application container. For example: `dock exec bash` to open an interactive shell in the running app container. |
 | `kubectl [...]` | Run `kubectl` with the context defined in `KUBERNETES_CONTEXT`. |
 | `test [...]` | Run `phpunit` inside the running application container. For example: `dock test --filter ExampleTest`. |
@@ -64,7 +64,7 @@ By default, Apache binds to port 80, MySQL to port 3306 and Redis to port 6379. 
 
 # Kubernetes
 
-You can deploy the Laravel application, including MySQL, Redis, Horizon and a scheduler by applying the [`kubernetes.yaml`](https://github.com/jarnovanleeuwen/laravel-dock/blob/master/build/kubernetes.yaml) config. The example assumes that you are using external (managed) services for MySQL and Redis, but this can be modified to run your own containers using persistent volumes. 
+You can deploy the Laravel application, including MySQL, Redis, Horizon and a scheduler by applying the [`kubernetes.yaml`](https://github.com/jarnovanleeuwen/laravel-dock/blob/main/build/kubernetes.yaml) config. The example assumes that you are using external (managed) services for MySQL and Redis, but this can be modified to run your own containers using persistent volumes. 
 
 First, create secrets for the Docker registry and application keys and passwords.
 ```sh
@@ -74,7 +74,7 @@ First, create secrets for the Docker registry and application keys and passwords
 
 Then, deploy the application.
 ```sh
-./dock deploy [tag]
+./dock deploy <tag>
 ```
 
 Finally, you can run the migrations or any other artisan command.
