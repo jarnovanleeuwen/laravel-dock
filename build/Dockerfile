@@ -10,13 +10,13 @@ FROM php:8.0-apache as app
 RUN apt-get update && apt-get install -y git mariadb-client nano supervisor libpng-dev libjpeg-dev libicu-dev libxml2-dev libzip-dev zip gnupg2 ssl-cert redis-tools
 
 # Install extensions
-RUN pecl install redis xdebug
+RUN pecl install redis
 
 RUN docker-php-ext-configure gd --with-jpeg &&\
 	docker-php-ext-configure intl && \
     docker-php-ext-configure zip && \
 	docker-php-ext-install bcmath gd intl opcache pcntl pdo_mysql soap zip && \
-	docker-php-ext-enable redis xdebug
+	docker-php-ext-enable redis
 
 # Create non-root user
 RUN useradd --create-home webdev
