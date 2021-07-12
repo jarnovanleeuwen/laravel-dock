@@ -26,7 +26,7 @@ data:
 
   TZ: "UTC"
 
-  LOG_CHANNEL: "stack"
+  LOG_CHANNEL: "stderr"
 
   DB_HOST: "your-db-server.net"
   DB_PORT: "3306"
