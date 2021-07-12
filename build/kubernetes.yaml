@@ -122,17 +122,6 @@ spec:
         env:
         - name: CONTAINER_ROLE
           value: "scheduler"
-        livenessProbe:
-          exec:
-            command:
-              - php
-              - artisan
-              - health-check:scheduler
-          initialDelaySeconds: 60 # default is 0
-          periodSeconds: 30 # default is 10
-          timeoutSeconds: 5 # default is 1
-          # successThreshold: 1
-          # failureThreshold: 3
         resources:
           requests:
             cpu: 250m
@@ -168,17 +157,6 @@ spec:
         env:
         - name: CONTAINER_ROLE
           value: "queue"
-        livenessProbe:
-          exec:
-            command:
-              - php
-              - artisan
-              - health-check:queue
-          initialDelaySeconds: 60 # default is 0
-          periodSeconds: 30 # default is 10
-          timeoutSeconds: 5 # default is 1
-          # successThreshold: 1
-          # failureThreshold: 3
         resources:
           requests:
             cpu: 250m
