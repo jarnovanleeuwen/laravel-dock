@@ -87,6 +87,17 @@ spec:
           preStop:
             exec:
               command: ["sleep", "5"]
+        # Start sending traffic only after the application is ready (Apache is running).
+        readinessProbe:
+          exec:
+            command:
+              - curl
+              - http://localhost
+          # initialDelaySeconds: 0
+          periodSeconds: 10 # default is 10
+          timeoutSeconds: 10 # default is 1
+          # successThreshold: 1
+          # failureThreshold: 3
         resources:
           requests:
             cpu: 1000m
