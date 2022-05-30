@@ -124,6 +124,11 @@ if [ $# -gt 0 ]; then
     ARGS="$@"
     $0 exec "php artisan $ARGS"
 
+  elif [ "$1" == "vapor" ]; then
+    shift 1
+    ARGS="$@"
+    $0 exec "vendor/bin/vapor $ARGS"
+
   else
       ${COMPOSE} "$@"
   fi

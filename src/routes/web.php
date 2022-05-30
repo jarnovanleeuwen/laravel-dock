@@ -15,6 +15,6 @@ use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
     return view('status', [
-        'migrations' => DB::table('migrations')->orderBy('id')->pluck('migration')
+        'migrations' => DB::table('migrations')->orderBy('id')->pluck('migration'),
     ]);
 });

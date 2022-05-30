@@ -50,7 +50,7 @@
                     </tr>
                     <tr>
                         <td>Cache Test</td>
-                        <td>{{ Cache::remember('cache-test', 1, function () { return Carbon\carbon::now()->format('H:i:s'); }) }} (TTL: 1 minute)</td>
+                        <td>{{ Cache::remember('cache-test', 1, function () { return Carbon\Carbon::now()->format('H:i:s'); }) }} (TTL: 1 minute)</td>
                     </tr>
                     <tr>
                         <td>Scheduler Test</td>

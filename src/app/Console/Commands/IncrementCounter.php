@@ -29,7 +29,9 @@ class IncrementCounter extends Command
      */
     public function handle()
     {
-        Cache::increment('increment-requests');
+        // Create or increment counter
+        $count = Cache::get($key = 'increment-requests', 0);
+        Cache::forever($key, $count + 1);
 
         IncrementCounterJob::dispatch();
     }

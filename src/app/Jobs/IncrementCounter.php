@@ -20,6 +20,8 @@ class IncrementCounter implements ShouldQueue
      */
     public function handle()
     {
-        Cache::increment('counter');
+        // Create or increment counter
+        $count = Cache::get($key = 'counter', 0);
+        Cache::forever($key, $count + 1);
     }
 }
